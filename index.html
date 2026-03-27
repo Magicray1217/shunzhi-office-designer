@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>瞬知 Office Designer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&display=swap');
+  :root {
+    --bg: #0b0f1e;
+    --panel: #111729;
+    --card: #1a2038;
+    --border: #2a3358;
+    --primary: #7c5cff;
+    --accent: #00f0ff;
+    --gold: #ffd700;
+    --green: #00ff88;
+    --red: #ff4466;
+    --orange: #ff8c00;
+    --text: #e4e8f4;
+    --dim: #6a7498;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Noto Sans SC',system-ui,sans-serif; background:var(--bg); color:var(--text); overflow:hidden; height:100vh; }
+
+  /* === TOP BAR === */
+  .topbar { height:56px; display:flex; align-items:center; justify-content:space-between; padding:0 20px; background:linear-gradient(180deg,#141a30,#0f1424); border-bottom:1px solid var(--border); z-index:50; position:relative; }
+  .topbar .logo { display:flex; align-items:center; gap:10px; }
+  .topbar .logo .icon { width:32px; height:32px; background:linear-gradient(135deg,var(--primary),var(--accent)); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.1em; }
+  .topbar .logo h1 { font-size:1.15em; font-weight:900; letter-spacing:-0.5px; }
+  .topbar .logo h1 span { background:linear-gradient(90deg,var(--accent),var(--primary)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .topbar .info { display:flex; gap:24px; }
+  .topbar .info .chip { display:flex; align-items:center; gap:6px; font-size:0.85em; padding:6px 12px; background:var(--card); border-radius:8px; border:1px solid var(--border); }
+  .topbar .info .chip b { color:var(--gold); }
+
+  /* === LAYOUT === */
+  .main { display:flex; height:calc(100vh - 56px); }
+
+  /* === LEFT PANEL: SHOP === */
+  .panel-left { width:260px; background:var(--panel); border-right:1px solid var(--border); display:flex; flex-direction:column; }
+  .panel-title { padding:14px 16px 10px; font-size:0.8em; color:var(--dim); text-transform:uppercase; letter-spacing:2px; font-weight:700; border-bottom:1px solid var(--border); }
+  .shop-scroll { flex:1; overflow-y:auto; padding:8px; }
+  .shop-card { background:var(--card); border:2px solid var(--border); border-radius:12px; padding:12px; margin-bottom:8px; cursor:pointer; transition:all 0.25s; position:relative; overflow:hidden; }
+  .shop-card::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,transparent 60%,rgba(124,92,255,0.08)); pointer-events:none; }
+  .shop-card:hover { border-color:var(--primary); transform:translateY(-2px); box-shadow:0 6px 20px rgba(124,92,255,0.15); }
+  .shop-card .row { display:flex; align-items:center; gap:10px; }
+  .shop-card .avatar-box { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.6em; flex-shrink:0; }
+  .shop-card .info h4 { font-size:0.9em; margin-bottom:2px; }
+  .shop-card .info p { font-size:0.72em; color:var(--dim); line-height:1.4; }
+  .shop-card .bottom { display:flex; justify-content:space-between; align-items:center; margin-top:8px; }
+  .shop-card .price { font-size:0.8em; color:var(--gold); font-weight:700; }
+  .shop-card .badge { font-size:0.65em; padding:3px 8px; border-radius:5px; font-weight:700; }
+  .badge-req { background:rgba(255,68,102,0.15); color:var(--red); }
+  .badge-opt { background:rgba(0,240,255,0.15); color:var(--accent); }
+  .badge-installed { background:rgba(0,255,136,0.15); color:var(--green); }
+
+  /* === CENTER: GAME FLOOR === */
+  .floor-wrap { flex:1; position:relative; overflow:hidden; }
+  .floor-canvas { width:100%; height:100%; }
+
+  /* Overlay UI on canvas */
+  .floor-overlay { position:absolute; inset:0; pointer-events:none; }
+  .seat-tooltip { position:absolute; pointer-events:auto; background:rgba(17,23,41,0.95); border:1px solid var(--primary); border-radius:10px; padding:10px 14px; font-size:0.8em; display:none; min-width:180px; backdrop-filter:blur(8px); }
+  .seat-tooltip .tt-name { font-weight:700; margin-bottom:4px; }
+  .seat-tooltip .tt-kpi { color:var(--dim); font-size:0.85em; }
+  .seat-tooltip .tt-kpi b { color:var(--green); }
+
+  /* === RIGHT PANEL: DETAILS === */
+  .panel-right { width:300px; background:var(--panel); border-left:1px solid var(--border); display:flex; flex-direction:column; overflow-y:auto; }
+  .detail-empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--dim); }
+  .detail-empty .de-icon { font-size:3.5em; margin-bottom:12px; opacity:0.6; }
+
+  .agent-hero { text-align:center; padding:24px 16px 16px; position:relative; }
+  .agent-hero::before { content:''; position:absolute; top:0; left:0; right:0; height:80px; background:linear-gradient(135deg,rgba(124,92,255,0.15),rgba(0,240,255,0.1)); }
+  .agent-hero .ah-avatar { font-size:3.5em; position:relative; z-index:1; filter:drop-shadow(0 4px 12px rgba(0,0,0,0.5)); }
+  .agent-hero .ah-name { font-size:1.2em; font-weight:900; margin-top:8px; }
+  .agent-hero .ah-subtitle { font-size:0.8em; color:var(--dim); margin-top:4px; }
+  .agent-hero .ah-level { margin-top:8px; display:inline-flex; align-items:center; gap:6px; padding:4px 12px; background:rgba(255,215,0,0.1); border:1px solid rgba(255,215,0,0.3); border-radius:8px; font-size:0.85em; color:var(--gold); font-weight:700; }
+  
+  .stat-row { display:flex; gap:8px; padding:0 16px; margin-top:12px; }
+  .stat-box { flex:1; background:var(--card); border-radius:10px; padding:10px; text-align:center; border:1px solid var(--border); }
+  .stat-box .sb-val { font-size:1.3em; font-weight:900; }
+  .stat-box .sb-label { font-size:0.7em; color:var(--dim); margin-top:2px; }
+  .sb-val.good { color:var(--green); }
+  .sb-val.warn { color:var(--orange); }
+  .sb-val.bad { color:var(--red); }
+
+  .section { padding:16px; }
+  .section-title { font-size:0.75em; color:var(--dim); text-transform:uppercase; letter-spacing:1.5px; font-weight:700; margin-bottom:10px; }
+  .kpi-item { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--card); border-radius:8px; margin-bottom:6px; font-size:0.85em; border:1px solid var(--border); }
+  .kpi-item b.good { color:var(--green); }
+  .kpi-item b.warn { color:var(--orange); }
+  .kpi-item b.bad { color:var(--red); }
+
+  .skill-tags { display:flex; flex-wrap:wrap; gap:6px; }
+  .skill-tag { padding:5px 10px; background:rgba(124,92,255,0.1); border:1px solid rgba(124,92,255,0.25); border-radius:7px; font-size:0.75em; color:var(--primary); }
+
+  .upgrade-btn { display:block; width:calc(100% - 32px); margin:8px 16px 16px; padding:14px; border:none; border-radius:12px; font-size:0.95em; font-weight:900; cursor:pointer; transition:all 0.25s; color:#fff; }
+  .upgrade-btn.can { background:linear-gradient(135deg,var(--primary),#9b6dff); }
+  .upgrade-btn.can:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(124,92,255,0.4); }
+  .upgrade-btn.max { background:linear-gradient(135deg,#ffd700,#ffaa00); color:#1a1a2e; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="icon">⚡</div>
+    <h1>瞬知 <span>Office Designer</span></h1>
+  </div>
+  <div class="info">
+    <div class="chip">🏢 <b id="hud-office">飞舟·AI店长</b></div>
+    <div class="chip">⭐ <b id="hud-energy">8,500</b>/月</div>
+    <div class="chip">🪑 <b id="hud-seats">12</b>/15</div>
+    <div class="chip">🏆 Lv.<b id="hud-level">3</b></div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="panel-left">
+    <div class="panel-title">📦 工位商店</div>
+    <div class="shop-scroll" id="shopList"></div>
+  </div>
+
+  <div class="floor-wrap">
+    <canvas class="floor-canvas" id="canvas"></canvas>
+    <div class="floor-overlay">
+      <div class="seat-tooltip" id="tooltip"></div>
+    </div>
+  </div>
+
+  <div class="panel-right" id="detailPanel">
+    <div class="detail-empty">
+      <div class="de-icon">🪑</div>
+      <div>点击工位查看详情</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============= DATA =============
+const ROOMS = [
+  { id:'ceo',  label:'☕ CEO Room',  x:0.30, y:0.02, w:0.40, h:0.18, color:'rgba(255,215,0,0.04)', border:'rgba(255,215,0,0.2)' },
+  { id:'biz',  label:'🏭 业务 Room', x:0.03, y:0.22, w:0.94, h:0.42, color:'rgba(124,92,255,0.03)', border:'rgba(124,92,255,0.2)' },
+  { id:'mgmt', label:'🔧 管理 Room', x:0.03, y:0.66, w:0.55, h:0.28, color:'rgba(0,240,255,0.03)', border:'rgba(0,240,255,0.2)' },
+  { id:'rest', label:'💤 休息 Room',  x:0.62, y:0.66, w:0.35, h:0.28, color:'rgba(100,120,160,0.03)', border:'rgba(100,120,160,0.2)' },
+];
+
+const SEATS = [
+  { id:'sec', name:'秘书', emoji:'🧑‍💼', room:'ceo', rx:0.45, ry:0.08, level:2, energy:75, status:'working', required:true, cost:300, desc:'CEO日程管理+文件处理',
+    kpis:[{n:'响应速度',v:'≤5min',s:'good'},{n:'准确率',v:'96%',s:'good'}], skills:['日程管理','文件分析','审批辅助'] },
+  { id:'ad', name:'智能投放', emoji:'🎯', room:'biz', rx:0.08, ry:0.26, level:5, energy:92, status:'working', required:true, cost:2000, desc:'多平台广告出价自动优化',
+    kpis:[{n:'ROI',v:'2.8x',s:'good'},{n:'CPA达标率',v:'94%',s:'good'},{n:'日消耗完成',v:'102%',s:'good'}], skills:['巨量引擎API','腾讯广告API','智能出价','DMP定向'] },
+  { id:'content', name:'内容生成', emoji:'📝', room:'biz', rx:0.30, ry:0.26, level:3, energy:68, status:'working', required:true, cost:1000, desc:'商品文案+种草内容AI生成',
+    kpis:[{n:'爆款率',v:'18%',s:'good'},{n:'产出效率',v:'22条/日',s:'good'},{n:'一次通过率',v:'55%',s:'warn'}], skills:['文案生成','多平台适配','热点追踪'] },
+  { id:'product', name:'商品运营', emoji:'📦', room:'biz', rx:0.52, ry:0.26, level:4, energy:80, status:'working', required:true, cost:1500, desc:'选品/定价/上架/库存全管理',
+    kpis:[{n:'动销率',v:'78%',s:'good'},{n:'缺货率',v:'3%',s:'good'},{n:'标题优化',v:'+22%',s:'good'}], skills:['选品分析','定价策略','库存预测','SEO优化'] },
+  { id:'data', name:'数据看板', emoji:'📊', room:'biz', rx:0.74, ry:0.26, level:6, energy:95, status:'working', required:true, cost:1200, desc:'多店铺数据汇总+异常预警',
+    kpis:[{n:'准确率',v:'99.8%',s:'good'},{n:'日报时间',v:'09:12',s:'good'},{n:'异常发现',v:'≤8min',s:'good'}], skills:['多源ETL','异常检测','NL2SQL','可视化'] },
+  { id:'customer', name:'智能客服', emoji:'💬', room:'biz', rx:0.08, ry:0.46, level:3, energy:60, status:'alert', required:true, cost:800, desc:'售前咨询+售后处理+评价管理',
+    kpis:[{n:'响应速度',v:'≤15s',s:'good'},{n:'解决率',v:'72%',s:'warn'},{n:'满意度',v:'4.1',s:'warn'}], skills:['多轮对话','情感分析','售后处理','知识库'] },
+  { id:'competitor', name:'竞品监控', emoji:'🔍', room:'biz', rx:0.30, ry:0.46, level:2, energy:45, status:'idle', required:false, cost:500, desc:'竞品价格/活动/排名监控',
+    kpis:[{n:'竞品覆盖',v:'85%',s:'good'},{n:'情报时效',v:'≤12h',s:'good'}], skills:['价格监控','活动追踪','素材抓取'] },
+  { id:'livestream', name:'直播运营', emoji:'🎬', room:'biz', rx:0.52, ry:0.46, level:1, energy:30, status:'idle', required:false, cost:800, desc:'直播间策划/执行/实时数据',
+    kpis:[{n:'直播GMV',v:'待配置',s:'warn'}], skills:['脚本生成','实时数据','话术推荐'] },
+  { id:'ab', name:'A/B测试', emoji:'🧪', room:'biz', rx:0.74, ry:0.46, level:2, energy:50, status:'working', required:false, cost:400, desc:'素材/出价/页面多维度测试',
+    kpis:[{n:'测试数',v:'12组/周',s:'good'},{n:'胜出率',v:'38%',s:'good'}], skills:['多臂老虎机','贝叶斯优化','自动分流'] },
+  { id:'hr', name:'HR Agent', emoji:'👔', room:'mgmt', rx:0.10, ry:0.72, level:3, energy:50, status:'working', required:true, cost:400, desc:'Agent招聘/绩效/替换管理',
+    kpis:[{n:'匹配度',v:'88%',s:'good'},{n:'替换时效',v:'≤48h',s:'good'}], skills:['Agent筛选','绩效评估','星能核算'] },
+  { id:'finance', name:'财务Agent', emoji:'💰', room:'mgmt', rx:0.28, ry:0.72, level:2, energy:40, status:'working', required:true, cost:400, desc:'星能收支/预算控制/成本分析',
+    kpis:[{n:'结算准确率',v:'100%',s:'good'},{n:'预算偏差',v:'≤5%',s:'good'}], skills:['星能结算','预算管理','成本分析'] },
+  { id:'security', name:'安全Agent', emoji:'🔒', room:'mgmt', rx:0.46, ry:0.72, level:2, energy:55, status:'working', required:true, cost:300, desc:'数据安全/权限审计/合规',
+    kpis:[{n:'安全事件',v:'0',s:'good'},{n:'合规检查',v:'100%',s:'good'}], skills:['权限审计','数据脱敏','合规检查'] },
+];
+
+const SHOP_ITEMS = [
+  { emoji:'🛒', name:'促销活动', desc:'大促策划 / 优惠券管理', cost:600 },
+  { emoji:'📱', name:'私域运营', desc:'微信社群 / 企微SCRM', cost:700 },
+  { emoji:'🌐', name:'跨境运营', desc:'京东国际 / 海外平台', cost:1200 },
+  { emoji:'🎨', name:'视觉设计', desc:'主图/详情页 AI生成', cost:500 },
+  { emoji:'📧', name:'CRM触达', desc:'短信 / Push / EDM', cost:400 },
+  { emoji:'🤖', name:'舆情监控', desc:'品牌口碑 / 差评预警', cost:350 },
+  { emoji:'📋', name:'合同管理', desc:'电子签约 / 合同归档', cost:250 },
+];
+
+// ============= CANVAS RENDERER =============
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+let hoveredSeat = null;
+let selectedSeat = null;
+let animFrame = 0;
+let particles = [];
+
+function resize() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  W = rect.width; H = rect.height;
+  canvas.width = W * devicePixelRatio;
+  canvas.height = H * devicePixelRatio;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+}
+
+function drawGrid() {
+  ctx.strokeStyle = 'rgba(124,92,255,0.04)';
+  ctx.lineWidth = 0.5;
+  const step = 50;
+  for (let x = 0; x < W; x += step) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = 0; y < H; y += step) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+}
+
+function drawRooms() {
+  ROOMS.forEach(r => {
+    const x = r.x*W, y = r.y*H, w = r.w*W, h = r.h*H;
+    ctx.fillStyle = r.color;
+    ctx.strokeStyle = r.border;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6,4]);
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 12);
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Label
+    ctx.font = '700 11px "Noto Sans SC"';
+    ctx.fillStyle = r.border;
+    ctx.fillText(r.label, x+14, y-4);
+  });
+}
+
+function getSeatRect(s) {
+  const sw = 110, sh = 130;
+  return { x: s.rx*W - sw/2, y: s.ry*H, w: sw, h: sh };
+}
+
+function drawSeat(s) {
+  const r = getSeatRect(s);
+  const isHover = hoveredSeat === s;
+  const isSelected = selectedSeat === s;
+  const t = animFrame / 60;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(r.x+r.w/2, r.y+r.h+4, r.w*0.4, 8, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Card body
+  const grad = ctx.createLinearGradient(r.x, r.y, r.x+r.w, r.y+r.h);
+  if (s.status === 'alert') {
+    const pulse = 0.3 + Math.sin(t*4)*0.15;
+    grad.addColorStop(0, `rgba(255,68,102,${pulse})`);
+    grad.addColorStop(1, '#1e2040');
+  } else {
+    grad.addColorStop(0, '#1c2445');
+    grad.addColorStop(1, '#232b52');
+  }
+  ctx.fillStyle = grad;
+  ctx.strokeStyle = isSelected ? '#7c5cff' : isHover ? '#5a6aaa' : '#2e3660';
+  ctx.lineWidth = isSelected ? 2.5 : isHover ? 2 : 1.5;
+  ctx.beginPath();
+  ctx.roundRect(r.x, r.y, r.w, r.h, 12);
+  ctx.fill();
+  ctx.stroke();
+
+  // Glow if selected
+  if (isSelected) {
+    ctx.shadowColor = '#7c5cff';
+    ctx.shadowBlur = 20;
+    ctx.strokeStyle = '#7c5cff';
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  // Avatar (floating)
+  const floatY = Math.sin(t * 1.5 + s.rx * 10) * 4;
+  ctx.font = '34px serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(s.emoji, r.x+r.w/2, r.y + 42 + floatY);
+
+  // Name
+  ctx.font = '700 12px "Noto Sans SC"';
+  ctx.fillStyle = '#e4e8f4';
+  ctx.fillText(s.name, r.x+r.w/2, r.y + 65);
+
+  // Level stars
+  ctx.font = '10px serif';
+  ctx.fillStyle = '#ffd700';
+  const stars = '⭐'.repeat(Math.min(s.level, 5));
+  ctx.fillText(`Lv.${s.level}`, r.x+r.w/2, r.y + 82);
+
+  // Energy bar
+  const barX = r.x + 15, barY = r.y + 90, barW = r.w - 30, barH = 5;
+  ctx.fillStyle = '#151b30';
+  ctx.beginPath(); ctx.roundRect(barX, barY, barW, barH, 3); ctx.fill();
+  const eColor = s.energy > 70 ? '#00ff88' : s.energy > 40 ? '#ff8c00' : '#ff4466';
+  ctx.fillStyle = eColor;
+  ctx.beginPath(); ctx.roundRect(barX, barY, barW * s.energy/100, barH, 3); ctx.fill();
+
+  // Status badge
+  const badgeX = r.x+r.w-14, badgeY = r.y+10, badgeR = 8;
+  ctx.beginPath(); ctx.arc(badgeX, badgeY, badgeR, 0, Math.PI*2);
+  if (s.status === 'working') {
+    ctx.fillStyle = '#00ff88';
+    ctx.shadowColor = '#00ff88'; ctx.shadowBlur = 8;
+  } else if (s.status === 'alert') {
+    ctx.fillStyle = '#ff4466';
+    ctx.shadowColor = '#ff4466'; ctx.shadowBlur = 8;
+  } else {
+    ctx.fillStyle = '#4a5278';
+    ctx.shadowBlur = 0;
+  }
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Working particles
+  if (s.status === 'working' && Math.random() < 0.04) {
+    particles.push({
+      x: r.x + r.w/2 + (Math.random()-0.5)*40,
+      y: r.y + 50,
+      vx: (Math.random()-0.5)*0.5,
+      vy: -0.5 - Math.random()*0.8,
+      life: 60,
+      text: ['📈','✨','⚡','✓','💫'][Math.floor(Math.random()*5)],
+      size: 10 + Math.random()*6,
+    });
+  }
+
+  // Cost label
+  ctx.font = '700 10px "Noto Sans SC"';
+  ctx.fillStyle = '#ffd700';
+  ctx.fillText(`⭐${s.cost}`, r.x+r.w/2, r.y + r.h - 12);
+
+  ctx.textAlign = 'start';
+}
+
+function drawParticles() {
+  particles = particles.filter(p => p.life > 0);
+  particles.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life--;
+    ctx.globalAlpha = p.life / 60;
+    ctx.font = `${p.size}px serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(p.text, p.x, p.y);
+    ctx.textAlign = 'start';
+  });
+  ctx.globalAlpha = 1;
+}
+
+function drawConnectionLines() {
+  // Draw data flow lines between working seats in same room
+  ctx.strokeStyle = 'rgba(124,92,255,0.08)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3,6]);
+  const bizSeats = SEATS.filter(s => s.room === 'biz' && s.status === 'working');
+  for (let i = 0; i < bizSeats.length - 1; i++) {
+    const a = getSeatRect(bizSeats[i]);
+    const b = getSeatRect(bizSeats[i+1]);
+    ctx.beginPath();
+    ctx.moveTo(a.x+a.w, a.y+a.h/2);
+    ctx.lineTo(b.x, b.y+b.h/2);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+}
+
+function render() {
+  ctx.clearRect(0, 0, W, H);
+  
+  // BG gradient
+  const bgGrad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W*0.7);
+  bgGrad.addColorStop(0, '#121830');
+  bgGrad.addColorStop(1, '#0a0e1a');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  drawGrid();
+  drawRooms();
+  drawConnectionLines();
+  SEATS.forEach(drawSeat);
+  drawParticles();
+
+  animFrame++;
+  requestAnimationFrame(render);
+}
+
+// ============= INTERACTION =============
+function hitTest(mx, my) {
+  for (let i = SEATS.length - 1; i >= 0; i--) {
+    const r = getSeatRect(SEATS[i]);
+    if (mx >= r.x && mx <= r.x+r.w && my >= r.y && my <= r.y+r.h) return SEATS[i];
+  }
+  return null;
+}
+
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  hoveredSeat = hitTest(mx, my);
+  canvas.style.cursor = hoveredSeat ? 'pointer' : 'default';
+  
+  const tt = document.getElementById('tooltip');
+  if (hoveredSeat && hoveredSeat !== selectedSeat) {
+    tt.style.display = 'block';
+    tt.style.left = (e.clientX - canvas.parentElement.getBoundingClientRect().left + 16) + 'px';
+    tt.style.top = (e.clientY - canvas.parentElement.getBoundingClientRect().top - 20) + 'px';
+    tt.innerHTML = `<div class="tt-name">${hoveredSeat.emoji} ${hoveredSeat.name} Lv.${hoveredSeat.level}</div>
+      <div class="tt-kpi">${hoveredSeat.kpis.map(k=>`${k.n}: <b>${k.v}</b>`).join(' · ')}</div>`;
+  } else {
+    tt.style.display = 'none';
+  }
+});
+
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const seat = hitTest(mx, my);
+  if (seat) { selectedSeat = seat; showDetail(seat); }
+});
+
+canvas.addEventListener('mouseleave', () => {
+  hoveredSeat = null;
+  document.getElementById('tooltip').style.display = 'none';
+});
+
+// ============= DETAIL PANEL =============
+function showDetail(s) {
+  const panel = document.getElementById('detailPanel');
+  panel.innerHTML = `
+    <div class="agent-hero">
+      <div class="ah-avatar">${s.emoji}</div>
+      <div class="ah-name">${s.name}</div>
+      <div class="ah-subtitle">${s.desc}</div>
+      <div class="ah-level">Lv.${s.level} ${'⭐'.repeat(Math.min(s.level,5))}</div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-box"><div class="sb-val ${s.energy>70?'good':s.energy>40?'warn':'bad'}">${s.energy}%</div><div class="sb-label">能量</div></div>
+      <div class="stat-box"><div class="sb-val" style="color:var(--gold)">⭐${s.cost}</div><div class="sb-label">月消耗</div></div>
+      <div class="stat-box"><div class="sb-val">${s.status==='working'?'⚡':s.status==='alert'?'⚠️':'💤'}</div><div class="sb-label">${s.status==='working'?'工作中':s.status==='alert'?'告警':'空闲'}</div></div>
+    </div>
+    <div class="section">
+      <div class="section-title">📊 KPI 实况</div>
+      ${s.kpis.map(k=>`<div class="kpi-item"><span>${k.n}</span><b class="${k.s}">${k.v}</b></div>`).join('')}
+    </div>
+    <div class="section">
+      <div class="section-title">🛠️ 技能装备</div>
+      <div class="skill-tags">${s.skills.map(sk=>`<span class="skill-tag">${sk}</span>`).join('')}</div>
+    </div>
+    <div class="section" style="padding-top:0">
+      <div class="section-title">ℹ️ 信息</div>
+      <div class="kpi-item"><span>类型</span><b>${s.required?'✅ 必选':'🔲 可选'}</b></div>
+      <div class="kpi-item"><span>所属房间</span><b>${ROOMS.find(r=>r.id===s.room)?.label||''}</b></div>
+    </div>
+    ${s.level < 6 ? `<button class="upgrade-btn can" onclick="doUpgrade('${s.id}')">⬆️ 升级到 Lv.${s.level+1}</button>` : `<button class="upgrade-btn max">🏆 已满级</button>`}
+  `;
+}
+
+function doUpgrade(id) {
+  const s = SEATS.find(s => s.id === id);
+  if (!s || s.level >= 6) return;
+  s.level++;
+  // Celebration particles
+  const r = getSeatRect(s);
+  for (let i = 0; i < 20; i++) {
+    particles.push({
+      x: r.x + r.w/2 + (Math.random()-0.5)*60,
+      y: r.y + r.h/2,
+      vx: (Math.random()-0.5)*2,
+      vy: -1 - Math.random()*2,
+      life: 80,
+      text: ['⭐','✨','💫','🌟','🎉'][Math.floor(Math.random()*5)],
+      size: 14 + Math.random()*10,
+    });
+  }
+  showDetail(s);
+}
+
+// ============= SHOP =============
+function renderShop() {
+  const el = document.getElementById('shopList');
+  el.innerHTML = SHOP_ITEMS.map(item => `
+    <div class="shop-card" onclick="installSeat('${item.name}')">
+      <div class="row">
+        <div class="avatar-box" style="background:linear-gradient(135deg,rgba(124,92,255,0.2),rgba(0,240,255,0.1))">${item.emoji}</div>
+        <div class="info"><h4>${item.name}</h4><p>${item.desc}</p></div>
+      </div>
+      <div class="bottom">
+        <span class="price">⭐ ${item.cost}/月</span>
+        <span class="badge badge-opt">可选</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function installSeat(name) {
+  const item = SHOP_ITEMS.find(i => i.name === name);
+  if (!item) return;
+  // Add to floor
+  const newSeat = {
+    id: 'shop_'+Date.now(),
+    name: item.name,
+    emoji: item.emoji,
+    room: 'biz',
+    rx: 0.5 + Math.random()*0.2,
+    ry: 0.35 + Math.random()*0.1,
+    level: 1,
+    energy: 100,
+    status: 'idle',
+    required: false,
+    cost: item.cost,
+    desc: item.desc,
+    kpis: [{n:'状态',v:'刚安装',s:'warn'}],
+    skills: ['待配置'],
+  };
+  SEATS.push(newSeat);
+  document.getElementById('hud-seats').textContent = SEATS.length;
+  // Spawn particles
+  const r = getSeatRect(newSeat);
+  for (let i = 0; i < 15; i++) {
+    particles.push({
+      x: r.x+r.w/2, y: r.y+r.h/2,
+      vx: (Math.random()-0.5)*3, vy: (Math.random()-0.5)*3,
+      life: 50, text:'✨', size:16,
+    });
+  }
+}
+
+// ============= INIT =============
+resize();
+window.addEventListener('resize', resize);
+renderShop();
+render();
+
+// Auto-select first biz seat
+setTimeout(() => { selectedSeat = SEATS[1]; showDetail(SEATS[1]); }, 300);
+</script>
+</body>
+</html>
